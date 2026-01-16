@@ -1,8 +1,16 @@
 import React, { useState, useRef, useEffect } from 'react';
-import backgroundVideo from '../assets/background.mp4';
+
+// Try to import background video, fallback to null if not available
+let backgroundVideo: string | null = null;
+try {
+  backgroundVideo = new URL('../assets/background.mp4', import.meta.url).href;
+} catch {
+  // Video file not available, will use fallback gradient
+}
 
 export const BackgroundImage: React.FC = () => {
   const [videoLoaded, setVideoLoaded] = useState(false);
+  const [videoError, setVideoError] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
 
   // Prevent video from restarting on window focus
@@ -29,20 +37,26 @@ export const BackgroundImage: React.FC = () => {
 
   return (
     <>
-      {/* Video Background - Hytale gameplay video - Full brightness */}
+      {/* Video Background or Gradient Fallback */}
       <div className="absolute inset-0 overflow-hidden">
-        <video
-          ref={videoRef}
-          autoPlay
-          muted
-          loop
-          playsInline
-          onLoadedData={() => setVideoLoaded(true)}
-          className={`absolute w-full h-full object-cover transition-opacity duration-500 ${videoLoaded ? 'opacity-100' : 'opacity-0'}`}
-          poster="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1280 720'%3E%3Crect fill='%23090909' width='1280' height='720'/%3E%3C/svg%3E"
-        >
-          <source src={backgroundVideo} type="video/mp4" />
-        </video>
+        {backgroundVideo && !videoError ? (
+          <video
+            ref={videoRef}
+            autoPlay
+            muted
+            loop
+            playsInline
+            onLoadedData={() => setVideoLoaded(true)}
+            onError={() => setVideoError(true)}
+            className={`absolute w-full h-full object-cover transition-opacity duration-500 ${videoLoaded ? 'opacity-100' : 'opacity-0'}`}
+            poster="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1280 720'%3E%3Crect fill='%23090909' width='1280' height='720'/%3E%3C/svg%3E"
+          >
+            <source src={backgroundVideo} type="video/mp4" />
+          </video>
+        ) : (
+          // Fallback animated gradient background
+          <div className="absolute w-full h-full bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 animate-gradient" />
+        )}
       </div>
 
       {/* Light overlay for readability - much lighter than before */}
