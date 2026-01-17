@@ -2,6 +2,28 @@
 
 A multiplatform Hytale launcher with online mode support, auto-updater, game fetcher, and skin creator.
 
+## Installation
+
+### macOS
+Download `HyPrism-macOS-arm64.dmg` from [releases](https://github.com/yyyumeniku/HyPrism/releases).
+
+**Important**: Since the app is not code-signed, macOS will show a "damaged" warning. To fix this:
+
+1. After downloading, open Terminal
+2. Run: `xattr -cr /Applications/HyPrism.app`
+3. Or right-click the app → "Open" (first time only)
+
+### Linux
+Download `HyPrism-x86_64.AppImage` from [releases](https://github.com/yyyumeniku/HyPrism/releases).
+
+```bash
+chmod +x HyPrism-x86_64.AppImage
+./HyPrism-x86_64.AppImage
+```
+
+### Windows
+Download `HyPrism.exe` from [releases](https://github.com/yyyumeniku/HyPrism/releases) and run.
+
 ## Features
 
 - 🎮 **Game Management**: Download and launch Hytale with one click

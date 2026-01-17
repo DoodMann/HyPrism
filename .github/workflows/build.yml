@@ -58,15 +58,30 @@ jobs:
           # Install create-dmg
           brew install create-dmg
           
+          # Create a helper script
+          cat > build/bin/Remove-Quarantine.command << 'HELPER'
+          #!/bin/bash
+          cd "$(dirname "$0")"
+          echo "Removing quarantine attribute from HyPrism.app..."
+          xattr -cr HyPrism.app
+          echo "Done! You can now open HyPrism normally."
+          echo "Press any key to close this window..."
+          read -n 1
+          HELPER
+          chmod +x build/bin/Remove-Quarantine.command
+          
           # Create DMG from .app bundle
           create-dmg \
             --volname "HyPrism" \
             --window-pos 200 120 \
-            --window-size 600 400 \
+            --window-size 700 400 \
             --icon-size 100 \
-            --app-drop-link 425 120 \
+            --icon "HyPrism.app" 175 120 \
+            --hide-extension "HyPrism.app" \
+            --app-drop-link 525 120 \
+            --icon "Remove-Quarantine.command" 350 250 \
             "HyPrism-macOS-arm64.dmg" \
-            "build/bin/HyPrism.app"
+            "build/bin"
           
           # Replace .app with DMG
           rm -rf build/bin/*
