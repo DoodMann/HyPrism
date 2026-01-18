@@ -215,12 +215,38 @@ jobs:
             fi
           done
           
-          # Bundle additional commonly needed libraries
-          EXTRA_LIBS="
+          # Bundle ALL transitive dependencies by using ldd recursively
+          echo "Bundling all transitive dependencies..."
+          
+          # Function to recursively copy all dependencies
+          copy_deps() {
+            local lib="$1"
+            if [ ! -f "$lib" ]; then
+              return
+            fi
+            
+            # Get all dependencies
+            ldd "$lib" 2>/dev/null | grep "=> /" | awk '{print $3}' | while read dep; do
+              if [ -f "$dep" ]; then
+                local basename=$(basename "$dep")
+                if [ ! -f "HyPrism.AppDir/usr/lib/$basename" ]; then
+                  echo "Bundling: $basename"
+                  cp -L "$dep" HyPrism.AppDir/usr/lib/ 2>/dev/null || true
+                  # Recursively copy its dependencies
+                  copy_deps "$dep"
+                fi
+              fi
+            done
+          }
+          
+          # First, manually bundle the main WebKit libs and common missing ones
+          CRITICAL_LIBS="
             libwoff2dec.so.1.0.2
             libwoff2common.so.1.0.2
             libbrotlidec.so.1
             libbrotlicommon.so.1
+            libharfbuzz-icu.so.0
+            libharfbuzz.so.0
             libicui18n.so.*
             libicuuc.so.*
             libicudata.so.*
@@ -232,15 +258,30 @@ jobs:
             libmanette-0.2.so.*
             libwpe-1.0.so.*
             libWPEBackend-fdo-1.0.so.*
+            libgraphite2.so.*
+            libjpeg.so.*
+            libpng16.so.*
+            libwebp.so.*
+            libopenjp2.so.*
+            liblcms2.so.*
           "
           
-          for pattern in $EXTRA_LIBS; do
+          for pattern in $CRITICAL_LIBS; do
             for libpath in /usr/lib/x86_64-linux-gnu/$pattern /usr/lib/$pattern; do
               if [ -f "$libpath" ]; then
                 cp -L "$libpath" HyPrism.AppDir/usr/lib/ 2>/dev/null || true
                 echo "Bundled: $(basename $libpath)"
+                # Copy its dependencies too
+                copy_deps "$libpath"
               fi
             done
+          done
+          
+          # Copy dependencies of the main webkit libraries
+          for lib in HyPrism.AppDir/usr/lib/libwebkit2gtk-4.0.so.* HyPrism.AppDir/usr/lib/libjavascriptcoregtk-4.0.so.*; do
+            if [ -f "$lib" ]; then
+              copy_deps "$lib"
+            fi
           done
           
           # Create comprehensive library list
@@ -347,9 +388,34 @@ jobs:
           export WEBKIT_DISABLE_COMPOSITING_MODE="${WEBKIT_DISABLE_COMPOSITING_MODE:-0}"
           export WEBKIT_DISABLE_DMABUF_RENDERER=1
           
-          # Launch the application
-          cd "${HERE}/usr/bin"
-          exec ./HyPrism "$@"
+          # Final check: verify the binary can load before launching
+          if ! ldd "${HERE}/usr/bin/HyPrism" 2>&1 | grep -q "not found"; then
+            # All good, launch the application
+            cd "${HERE}/usr/bin"
+            exec ./HyPrism "$@"
+          else
+            # Still missing dependencies - show which ones
+            echo ""
+            echo "╔══════════════════════════════════════════════════════════════╗"
+            echo "║  ERROR: Still missing required libraries                     ║"
+            echo "╚══════════════════════════════════════════════════════════════╝"
+            echo ""
+            echo "Missing libraries:"
+            ldd "${HERE}/usr/bin/HyPrism" 2>&1 | grep "not found"
+            echo ""
+            echo "Please install webkit2gtk-4.0 from your package manager"
+            echo "or use the Flatpak version."
+            echo ""
+            
+            if command -v zenity &> /dev/null; then
+              MISSING=$(ldd "${HERE}/usr/bin/HyPrism" 2>&1 | grep "not found" | cut -d' ' -f1 | tr '\n' ' ')
+              zenity --error --title="HyPrism - Missing Libraries" \
+                --text="Still missing required libraries:\n\n$MISSING\n\nPlease use the Flatpak version or install webkit2gtk-4.0." \
+                --width=400 2>/dev/null
+            fi
+            
+            exit 1
+          fi
           APPRUN
           chmod +x HyPrism.AppDir/AppRun
           
