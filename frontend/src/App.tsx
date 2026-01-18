@@ -220,10 +220,8 @@ const App: React.FC = () => {
       if (data.progress >= 100 && data.stage === 'launch') {
         setIsGameRunning(true);
         setIsDownloading(false);
-      } else if (data.stage === 'complete' && data.progress >= 100) {
-        // Game was already installed, will launch now
-        setIsDownloading(false);
       }
+      // Don't reset on 'complete' - backend will send 'launch' next even if already installed
     });
 
     const unsubUpdate = EventsOn('update:available', (asset: any) => {
